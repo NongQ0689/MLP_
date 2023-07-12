@@ -19,4 +19,3 @@ input_filename = 'Output_Only.txt'
 output_filename = 'Output_Only_Bin.txt'
 
 convert_numbers(input_filename, output_filename)
-
