@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 ############################################################################
 
@@ -124,27 +123,16 @@ class NeuralNetwork:
         self.bias_hidden -= self.velocity_bias_hidden
 
     def train(self, X, y, epochs):
-        losses = []  # To store loss values for each epoch
         for epoch in range(epochs):
             for input_data, target in zip(X, y):
                 # Perform backpropagation
                 self.backward(input_data, target)
 
-            # Calculate loss for the current epoch
-            output = np.array([self.forward(x)[0] for x in X])
-            loss = np.mean(np.square(y - output))
-            losses.append(loss)
-
             # Print loss every 100 epochs
-            if (epoch + 1) % 500 == 0:
-                print(f"Epoch {epoch + 1}, Loss: {loss}")
-
-        # Plot the graph
-        plt.plot(range(1, epochs + 1), losses)  # Use range(1, epochs + 1) as x-axis for epochs
-        plt.xlabel('Epochs')
-        plt.ylabel('Loss')
-        plt.title('Loss vs. Epochs')
-        plt.show()
+            if ( epoch + 1 ) % 500 == 0:
+                output = np.array([self.forward(x)[0] for x in X])
+                loss = np.mean(np.square(y - output))
+                print(f"Epoch {epoch + 1}, Loss: {np.sqrt(denormalize_data( loss , minimum , maximum ))}")
 
     def sigmoid(self, x):
         return 1 / (1 + np.exp(-x))
@@ -161,8 +149,8 @@ minimum, maximum = min_max(data)
 normalized_data = normalize_data(data, minimum, maximum)
 
 X, Y  = extract_features_labels(normalized_data)
-nn = NeuralNetwork(8, 8, 1, 0.000001, 0.1)
-nn.train(X, Y, 500)
+nn = NeuralNetwork(8, 8, 1, 0.001, 0.2)
+nn.train(X, Y, 5000)
 
 
 data_p = read_data_from_file("Data_P.txt")
@@ -171,6 +159,7 @@ Z, Z2 = extract_features_labels(normalized_data_p)
 
 
 prediction = nn.forward(Z)
+
 
 for i, P in enumerate(prediction):
     print(f"Prediction for Data_P {i+1}: {denormalize_data( P , minimum , maximum )}")
