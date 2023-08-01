@@ -138,7 +138,7 @@ X, Y  = extract_features_labels(normalized_data)
 init_w0(8,16,1)
 mse_history = train(X, Y, N = 100000 , target_mse = 0.000001, lr = 0.7, momentum_rate = 0.9 )
 
-data_p = read_data_from_file("Data_P.txt")
+data_p = read_data_from_file("Data_p.txt")
 normalized_data_p = normalize_data(data_p, minimum, maximum)   
 Z, Z2 = extract_features_labels(normalized_data_p)
 prediction = forward(Z)
