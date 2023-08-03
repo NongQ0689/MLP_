@@ -1,48 +1,23 @@
 import numpy as np
-import matplotlib.pyplot as plt 
 import matplotlib.pyplot as plt1
 
-##################################################  Data
-
 def read_data_from_file(filename):
-    data = []
-    with open(filename, "r") as file:
-        for line in file:
-            values = [int(x) for x in line.split()]
-            data.append(values)
-    return data
+    x = []
+    y = []
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+        for i in range(1, len(lines), 3):
+            line = lines[i].strip()
+            numbers = [float(x) for x in line.split()]
+            x.append(numbers)
 
-def min_max(data):
-    flat_data = [item for sublist in data for item in sublist]
-    minimum = min(flat_data)
-    maximum = max(flat_data)
-    return minimum, maximum
+        for i in range(2, len(lines), 3):
+            line = lines[i].strip()
+            numbers = [float(x) for x in line.split()]
+            y.append(numbers)
 
-def normalize_data(data, min_value, max_value):
+    return x , y
 
-    # Apply min-max normalization to each value
-    normalized_data = [
-        [(value - min_value) / (max_value - min_value) for value in sublist]
-        for sublist in data
-    ]
-    return normalized_data
-
-def denormalize_data(normalized_data, min_value, max_value):
-    # Apply denormalization to each value
-    denormalized_data = [
-        [(value * (max_value - min_value)) + min_value for value in sublist]
-        for sublist in normalized_data
-    ]
-    return denormalized_data
-
-def denormalize_single_value(value, min_value, max_value): 
-    denormalized_value = (value * (max_value - min_value)) + min_value
-    return denormalized_value
-
-def extract_features_labels(data):
-    X = [sublist[:8] for sublist in data]
-    Y = [sublist[-1] for sublist in data]
-    return X, Y
 
 ##################################################  MLP
 
@@ -89,6 +64,7 @@ def train(input_data , output_data , N , target_mse , lr, momentum_rate ):
 
     while  epochs < N and mse > target_mse :
         input_data = np.array(input_data)
+        output_data = np.array(output_data)
 
         hidden_activations = np.dot(weights_input_hidden, input_data.T) + weights_bias_hidden
         hidden = sigmoid(hidden_activations)
@@ -96,7 +72,7 @@ def train(input_data , output_data , N , target_mse , lr, momentum_rate ):
         output_activations = np.dot(weights_hidden_output, hidden) + weights_bias_output
         output = sigmoid(output_activations)
 
-        output_error = output_data - output
+        output_error = output_data.T - output
         mse = np.mean(output_error**2) # Calculate the mean squared error
         
         output_delta = output_error * sigmoid_derivative(output)
@@ -123,7 +99,7 @@ def train(input_data , output_data , N , target_mse , lr, momentum_rate ):
 
     return mse_history
 
-##################################################  MAPE  MAE:
+
 
 def mean_absolute_percentage_error(actual, predicted):
     return np.mean(np.abs((actual - predicted) / actual)) * 100
@@ -131,85 +107,45 @@ def mean_absolute_percentage_error(actual, predicted):
 def mean_absolute_error(actual, predicted):
     return np.mean(np.abs(actual - predicted))
 
-##################################################  cross_validation
-'''
-def k_fold_data(k , data):
-    test = []
-    train = []
-    
-    return train, test
+
+def accuracy(actual, predicted, threshold=0.5):
+    total_correct = 0
+    total_samples = len(actual)
+
+    for actual_val, predicted_val in zip(actual, predicted.T):
+        predicted_binary = (predicted_val >= threshold).astype(int)
+        if np.array_equal(actual_val, predicted_binary):
+            total_correct += 1
+
+    accuracy_percentage = (total_correct / total_samples) * 100
+    return accuracy_percentage
+
+def print_results(z2, zp, threshold=0.5):
+    for actual_val, predicted_val in zip(z2, zp.T):
+        predicted_binary = (predicted_val >= threshold).astype(int)
+        is_correct = np.array_equal(actual_val, predicted_binary)
+        print(f"Actual: {actual_val}, Predicted: {predicted_binary}, Correct: {is_correct}")
 
 
 
-def cross_validation(k,input_size, hidden_size, output_size):
-    weights_input_hidden_0 , weights_hidden_output_0, weights_bias_hidden_0, weights_bias_output_0 = rand(input_size, hidden_size, output_size)  
-    
-    for i in k:
-        
-'''
+x , y = read_data_from_file("cross_train.txt")
 
-##################################################
+init_w0(2,8,2)
+mse_history = train(x, y, N = 100000 , target_mse = 0.001, lr = 0.7 , momentum_rate = 0.9 )
 
-data = read_data_from_file("Data_90.txt")
-#np.random.shuffle(data)
-minimum, maximum = min_max(data)
-normalized_data = normalize_data(data, minimum, maximum)
-X, Y  = extract_features_labels(normalized_data)
+z1 , z2 = read_data_from_file("cross_test.txt")
+zp = forward(z1)
 
-#train , test = k_fold_data(5,data)
-
-#print('\n'.join(map(str, train)))
-
-init_w0(8,16,1)
-mse_history = train(X, Y, N = 10000 , target_mse = 0.0004, lr = 0.7 , momentum_rate = 0.9 )
-
-data_p = read_data_from_file("Data_10.txt")
-test1 , test2 = extract_features_labels(data_p)
-normalized_data_p = normalize_data(data_p, minimum, maximum)   
-Z, Z2 = extract_features_labels(normalized_data_p)
-prediction = forward(Z)
-
-denormalize_predictions = denormalize_data(prediction, minimum, maximum)
-denormalize_predictions = np.array(denormalize_predictions)
-print("Predictions:", denormalize_predictions)
-
-mape = mean_absolute_percentage_error(Z2, prediction) 
-mae = mean_absolute_error(Z2, prediction)
-accuracy = 100 - mape
-
-print(f"Accuracy: {accuracy:.2f}%")
-print(f"Mean Absolute Percentage Error (MAPE): {mape:.2f}%")
-print(f"Mean Absolute Error (MAE): {mae:.2f}")
+print_results(z2, zp)
+accuracy_percentage = accuracy(z2, zp)
+print(f"Accuracy:", accuracy_percentage ,"%")
 
 
-################################################### Plotting the graph
 
 plt1.plot(range(1, len(mse_history) + 1), mse_history, marker='o')
-#plt1.xscale('log')  
+plt1.xscale('log')  
 plt1.xlabel('Epoch')
 plt1.ylabel('Mean Squared Error (MSE)')
 plt1.title('Training Progress')
 plt1.grid(True)
 plt1.show()
-
-################################################### Double Bar Graph
-
-bar_width = 0.35
-x_values = np.arange(len(test2))
-
-plt.bar(x_values, test2, width=bar_width, color='b', label='Actual Values')
-plt.bar(x_values + bar_width, denormalize_predictions.flatten(), width=bar_width, color='r', alpha=0.5, label='Predicted Values')
-
-# กำหนดชื่อแกน x และ y สำหรับกราฟแท่ง
-plt.xlabel('Data Index')
-plt.ylabel('Values')
-
-# กำหนดชื่อแกน x ให้แสดงหมายเลขแท่ง
-plt.xticks(x_values + bar_width / 2, x_values)
-
-# แสดงคำอธิบายแกน y สำหรับกราฟแท่งแต่ละแกน
-plt.legend()
-
-# แสดงกราฟ
-plt.title('Actual and Predicted Values')
-plt.show()
