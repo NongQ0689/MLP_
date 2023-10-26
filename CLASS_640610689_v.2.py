@@ -314,14 +314,3 @@ plt.grid(True)
 plt.show()
 
 confusion_matrix(TP, TN, FP, FN)
-
-
-'''
-plt1.plot(range(1, len(mse_history) + 1), mse_history)
-#plt1.xscale('log')  
-plt1.xlabel('Epoch')
-plt1.ylabel('Mean Squared Error (MSE)')
-plt1.title('Training Progress')
-plt1.grid(True)
-plt1.show()
-'''

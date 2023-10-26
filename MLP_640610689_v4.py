@@ -282,7 +282,6 @@ plt.show()
 ################################################## bar graph Actual vs. Predicted Values
 
 categories = np.arange(len(denormalized_actual_output))
-
 bar_width = 0.4
 
 # Create the actual and predicted bars side by side
