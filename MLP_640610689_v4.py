@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt 
-import matplotlib.pyplot as plt1
+
 
 ##################################################  Data
 
@@ -35,7 +35,7 @@ def denormalize_data(normalized_data, min_value, max_value):
     ]
     return denormalized_data
 
-def denormalize_single_value(value, min_value, max_value): 
+def denormalize_single_value(value, min_value, max_value):
     denormalized_value = (value * (max_value - min_value)) + min_value
     return denormalized_value
 
@@ -53,12 +53,21 @@ def sigmoid_derivative(x):
     return x * (1 - x)
 
 def init_w0(input_size, hidden_size, output_size):
-    global weights_input_hidden, weights_hidden_output, weights_bias_hidden, weights_bias_output
+    global weights_input_hidden, weights_hidden_output, weights_bias_hidden, weights_bias_output,initw0
+    global weights_input_hidden_0, weights_hidden_output_0, weights_bias_hidden_0, weights_bias_output_0
     
-    weights_input_hidden = np.random.randn(hidden_size, input_size)
-    weights_hidden_output = np.random.randn(output_size, hidden_size)
-    weights_bias_hidden = np.random.randn(hidden_size, 1)
-    weights_bias_output = np.random.randn(output_size, 1)
+    if initw0 == False:
+        print("start")
+        weights_input_hidden_0 = np.random.randn(hidden_size, input_size)
+        weights_hidden_output_0 = np.random.randn(output_size, hidden_size)
+        weights_bias_hidden_0 = np.random.randn(hidden_size, 1)
+        weights_bias_output_0 = np.random.randn(output_size, 1)
+        initw0 = True
+    
+    weights_input_hidden = weights_input_hidden_0
+    weights_hidden_output = weights_hidden_output_0
+    weights_bias_hidden = weights_bias_hidden_0
+    weights_bias_output = weights_bias_output_0
 
     global velocity_weights_input_hidden, velocity_weights_hidden_output, velocity_weights_bias_hidden, velocity_weights_bias_output
     velocity_weights_input_hidden = np.zeros_like(weights_input_hidden)
@@ -79,6 +88,18 @@ def forward(input_data):
 
     return output
 
+def forward_out(input_data , best_weight):
+    weights_input_hidden, weights_hidden_output, weights_bias_hidden, weights_bias_output = best_weight
+    input_data = np.array(input_data)
+
+    hidden_activations = np.dot(weights_input_hidden, input_data.T) + weights_bias_hidden
+    hidden = sigmoid(hidden_activations)
+
+    output_activations = np.dot(weights_hidden_output, hidden) + weights_bias_output
+    output = sigmoid(output_activations)
+
+    return output
+
 def train(input_data , output_data , N , target_mse , lr, momentum_rate ):
     global weights_input_hidden, weights_hidden_output, weights_bias_hidden, weights_bias_output
     global velocity_weights_input_hidden, velocity_weights_hidden_output, velocity_weights_bias_hidden, velocity_weights_bias_output
@@ -89,13 +110,13 @@ def train(input_data , output_data , N , target_mse , lr, momentum_rate ):
 
     while  epochs < N and mse > target_mse :
         input_data = np.array(input_data)
-
+    
         hidden_activations = np.dot(weights_input_hidden, input_data.T) + weights_bias_hidden
         hidden = sigmoid(hidden_activations)
 
         output_activations = np.dot(weights_hidden_output, hidden) + weights_bias_output
         output = sigmoid(output_activations)
-
+        
         output_error = output_data - output
         mse = np.mean(output_error**2) # Calculate the mean squared error
         
@@ -116,12 +137,13 @@ def train(input_data , output_data , N , target_mse , lr, momentum_rate ):
         weights_bias_hidden += velocity_weights_bias_hidden
 
         epochs += 1
-        if (epochs) % 1000 == 0:
-            print(f"Epoch: {epochs}, MSE: {mse}")
+        #if (epochs) % 100000 == 0:
+        #    print(f"Epoch: {epochs}, MSE: {mse}")
 
         mse_history.append(mse)  # Store the current MSE in the list
+    last_mse = mse
 
-    return mse_history
+    return mse_history , last_mse
 
 ##################################################  MAPE  MAE:
 
@@ -129,87 +151,148 @@ def mean_absolute_percentage_error(actual, predicted):
     return np.mean(np.abs((actual - predicted) / actual)) * 100
 
 def mean_absolute_error(actual, predicted):
-    return np.mean(np.abs(actual - predicted))
+    return np.mean(np.abs(actual - predicted)) 
+
+def print_results(actual, predicted):
+    mape = mean_absolute_percentage_error(actual, predicted)
+    accuracy = 100 - mape
+    
+    N_input = len(actual)
+
+    print(f"Prediction_data: {N_input} , Prediction_accuracy: {accuracy:.4f}% ")
+    print("...")
+
 
 ##################################################  cross_validation
-'''
-def k_fold_data(k , data):
-    test = []
-    train = []
+
+
+def k_fold_data(k, data):
+    folds = []
+    fold_size = len(data) // k
+
+    for i in range(k):
+        start_idx = i * fold_size
+        end_idx = (i + 1) * fold_size
+        test_fold = data[start_idx:end_idx]
+        train_fold = data[:start_idx] + data[end_idx:]
+        folds.append((train_fold, test_fold))
     
-    return train, test
+    return folds
+
+def k_fold_cross_validation(k, input_size, hidden_size, output_size, N, target_mse, lr, momentum_rate):
+
+    data = read_data_from_file("Data.txt") ############################################################# file
+    np.random.shuffle(data)
+    minimum, maximum = min_max(data)
+    normalized_data = normalize_data(data, minimum, maximum)
 
 
+    actual_outputs = []  # To store actual outputs
+    predicted_outputs = []  # To store predicted outputs
 
-def cross_validation(k,input_size, hidden_size, output_size):
-    weights_input_hidden_0 , weights_hidden_output_0, weights_bias_hidden_0, weights_bias_output_0 = rand(input_size, hidden_size, output_size)  
+    best_mse_history = []
+    best_accuracy = 0
+    best_accuracy_i = 0
+    best_weight = []
+    best_mse = 1
     
-    for i in k:
-        
-'''
+    i = k
+    for train_data, test_data in k_fold_data(k, normalized_data):
+        train_X, train_Y = extract_features_labels(train_data)
+        test_X, test_Y = extract_features_labels(test_data)
 
-##################################################
+        init_w0(input_size, hidden_size, output_size)
+        mse_history , last_mse = train(train_X, train_Y, N, target_mse, lr, momentum_rate)
 
-data = read_data_from_file("Data_90.txt")
-#np.random.shuffle(data)
-minimum, maximum = min_max(data)
-normalized_data = normalize_data(data, minimum, maximum)
-X, Y  = extract_features_labels(normalized_data)
+        prediction = forward(test_X)
+        #denormalize_predictions = denormalize_data(prediction, minimum, maximum)
+        mape = mean_absolute_percentage_error(test_Y, prediction)
+        mae = mean_absolute_error(test_Y, prediction)
+        accuracy = 100 - mape
+        i-=1
 
-#train , test = k_fold_data(5,data)
+        if accuracy > best_accuracy:
+            actual_outputs = test_Y
+            predicted_outputs = prediction
+            best_accuracy = accuracy
+            best_accuracy_i = 10-i
+            best_weight = [weights_input_hidden, weights_hidden_output, weights_bias_hidden, weights_bias_output]
 
-#print('\n'.join(map(str, train)))
+        if last_mse < best_mse:
+            best_mse_history = mse_history
+            best_mse_i = 10-i
+            best_mse = last_mse
 
-init_w0(8,16,1)
-mse_history = train(X, Y, N = 10000 , target_mse = 0.0004, lr = 0.7 , momentum_rate = 0.9 )
+        print(f"{10-i}: Test_Accuracy: {accuracy:.3f}%")
+        print(f"{10-i}: Mean Square Error (MSE): {last_mse:.5f}%")
+        print(f"{10-i}: Mean Absolute Percentage Error (MAPE): {mape:.3f}%")
+        print(f"{10-i}: Mean Absolute Error (MAE): {mae:.3f}")
+        print("...")
 
-data_p = read_data_from_file("Data_10.txt")
-test1 , test2 = extract_features_labels(data_p)
-normalized_data_p = normalize_data(data_p, minimum, maximum)   
-Z, Z2 = extract_features_labels(normalized_data_p)
-prediction = forward(Z)
+    print(f"Best_accuracy : {best_accuracy_i} : {best_accuracy:.3f}%")
+    print(f"Best_MSE : {best_mse_i} : {best_mse:.5f}%")
+    print("...")
 
-denormalize_predictions = denormalize_data(prediction, minimum, maximum)
-denormalize_predictions = np.array(denormalize_predictions)
-print("Predictions:", denormalize_predictions)
+    return best_mse_history , actual_outputs , predicted_outputs , minimum , maximum , best_weight
+    
+##################################################  train_MLP
 
-mape = mean_absolute_percentage_error(Z2, prediction) 
-mae = mean_absolute_error(Z2, prediction)
-accuracy = 100 - mape
+k = 10
+input_size = 8
+hidden_size = 16
+output_size = 1
+N = 10000
+target_mse = 0.0001
+lr = 0.1
+momentum_rate = 0.1
 
-print(f"Accuracy: {accuracy:.2f}%")
-print(f"Mean Absolute Percentage Error (MAPE): {mape:.2f}%")
-print(f"Mean Absolute Error (MAE): {mae:.2f}")
+initw0 = False
+best_mse_history , actual_outputs , predicted_outputs, minimum , maximum , best_weight = k_fold_cross_validation(k, input_size, hidden_size, output_size, N, target_mse, lr, momentum_rate)
+
+##################################################  output use the best weight
 
 
-################################################### Plotting the graph
+prediction_data = read_data_from_file("Data.txt") # input output
+minimum, maximum = min_max(prediction_data)
+normalized_data = normalize_data(prediction_data, minimum, maximum) # normalize_data input output
+prediction_data_input, prediction_data_output = extract_features_labels(normalized_data) # extract_data
 
-plt1.plot(range(1, len(mse_history) + 1), mse_history, marker='o')
-#plt1.xscale('log')  
-plt1.xlabel('Epoch')
-plt1.ylabel('Mean Squared Error (MSE)')
-plt1.title('Training Progress')
-plt1.grid(True)
-plt1.show()
+predicted_outputs = forward_out(prediction_data_input,best_weight) # predicted_outputs
+actual_outputs = prediction_data_output # actual_outputs
 
-################################################### Double Bar Graph
+print_results(actual_outputs, predicted_outputs)
 
-bar_width = 0.35
-x_values = np.arange(len(test2))
+################################################## denormalized_actual_output & predicted_output
 
-plt.bar(x_values, test2, width=bar_width, color='b', label='Actual Values')
-plt.bar(x_values + bar_width, denormalize_predictions.flatten(), width=bar_width, color='r', alpha=0.5, label='Predicted Values')
+denormalized_actual_output = [denormalize_single_value(value, minimum, maximum) for value in actual_outputs]
+denormalized_predicted_output = [denormalize_single_value(value, minimum, maximum)for value in predicted_outputs]
+denormalized_predicted_output = denormalized_predicted_output[0].tolist()
 
-# กำหนดชื่อแกน x และ y สำหรับกราฟแท่ง
-plt.xlabel('Data Index')
-plt.ylabel('Values')
+################################################## graph MSE Over Epochs
 
-# กำหนดชื่อแกน x ให้แสดงหมายเลขแท่ง
-plt.xticks(x_values + bar_width / 2, x_values)
-
-# แสดงคำอธิบายแกน y สำหรับกราฟแท่งแต่ละแกน
+plt.figure(figsize=(10, 6))
+plt.plot(best_mse_history, label='MSE')
+plt.title('Mean Squared Error (MSE) Over Epochs')
+plt.xlabel('Epoch')
+plt.ylabel('MSE')
 plt.legend()
+plt.grid(True)
+plt.show()
 
-# แสดงกราฟ
-plt.title('Actual and Predicted Values')
+################################################## bar graph Actual vs. Predicted Values
+
+categories = np.arange(len(denormalized_actual_output))
+
+bar_width = 0.4
+
+# Create the actual and predicted bars side by side
+plt.bar(categories - bar_width/2, denormalized_actual_output, bar_width, label='Desire Output', color='b')
+plt.bar(categories + bar_width/2, denormalized_predicted_output, bar_width, label='Predicted Output', color='r')
+
+# Set x-axis labels and title
+plt.xlabel('Data_set')
+plt.ylabel('Water_Level')
+plt.title('Desire Output vs. Predicted Output')
+
+plt.legend()
 plt.show()

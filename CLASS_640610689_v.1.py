@@ -131,7 +131,7 @@ def print_results(z2, zp, threshold=0.5):
 x , y = read_data_from_file("cross_train.txt")
 
 init_w0(2,8,2)
-mse_history = train(x, y, N = 100000 , target_mse = 0.001, lr = 0.7 , momentum_rate = 0.9 )
+mse_history = train(x, y, N = 10000 , target_mse = 0.001, lr = 0.7 , momentum_rate = 0.9 )
 
 z1 , z2 = read_data_from_file("cross_test.txt")
 zp = forward(z1)
@@ -142,8 +142,8 @@ print(f"Accuracy:", accuracy_percentage ,"%")
 
 
 
-plt1.plot(range(1, len(mse_history) + 1), mse_history, marker='o')
-plt1.xscale('log')  
+plt1.plot(range(1, len(mse_history) + 1), mse_history)
+#plt1.xscale('log')  
 plt1.xlabel('Epoch')
 plt1.ylabel('Mean Squared Error (MSE)')
 plt1.title('Training Progress')
